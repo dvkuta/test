@@ -1,172 +1,180 @@
 import { claims, generators } from "./data.js";
 import { splitText, pickRandom, getAverageLuminance } from "./helperFunctions.js";
+import "bootstrap/dist/css/bootstrap.min.css";
+import createArticle from "./test.js";
 
-const LOGO_OFFSET_X = 525;
-const LOGO_OFFSET_Y = 20;
-const LUMINANCE_THRESHOLD = 0.7;
 
-const unrolledGenerators = generators.flatMap(({ url, weight }) => Array(weight).fill(url));
+// const LOGO_OFFSET_X = 525;ł
+// const LOGO_OFFSET_Y = 20;
+// const LUMINANCE_THRESHOLD = 0.7;
 
-const imageReader = new FileReader();
+// const unrolledGenerators = generators.flatMap(({ url, weight }) => Array(weight).fill(url));
 
-const logoLight = new Image();
-logoLight.src = "public/logo-light.png";
+// const imageReader = new FileReader();
 
-const logoDark = new Image();
-logoDark.src = "public/logo-dark.png";
+// const logoLight = new Image();
+// logoLight.src = "public/logo-light.png";
 
-let currentImage = new Image();
-let currentText = "Test text";
+// const logoDark = new Image();
+// logoDark.src = "public/logo-dark.png";
 
-const rerollImage = async () => {
-  const imageData = await fetch(pickRandom(unrolledGenerators));
+// let currentImage = new Image();
+// let currentText = "Test text";
 
-  return new Promise((resolve) => {
-    const image = new Image();
+// const rerollImage = async () => {
+//   const imageData = await fetch(pickRandom(unrolledGenerators));
 
-    image.addEventListener("load", () => {
-      currentImage = image;
-      resolve();
-    });
+//   return new Promise((resolve) => {
+//     const image = new Image();
 
-    image.crossOrigin = "anonymous";
-    image.src = imageData.url;
-  });
-};
+//     image.addEventListener("load", () => {
+//       currentImage = image;
+//       resolve();
+//     });
 
-const rerollText = () => {
-  currentText = pickRandom(claims);
-};
+//     image.crossOrigin = "anonymous";
+//     image.src = imageData.url;
+//   });
+// };
 
-const canvas = document.getElementById("picture");
-const ctx = canvas.getContext("2d");
-const font = new FontFace("Bebas Neue", "url(public/BebasNeue-Bold.ttf)");
+// const rerollText = () => {
+//   currentText = pickRandom(claims);
+// };
 
-const initFont = async () => {
-  await font.load();
-  document.fonts.add(font);
-};
+// const canvas = document.getElementById("picture");
+// const ctx = canvas.getContext("2d");
+// const font = new FontFace("Bebas Neue", "url(public/BebasNeue-Bold.ttf)");
 
-const setFile = (file) => {
-  if (!file.type.startsWith("image/")) {
-    return;
-  }
+// const initFont = async () => {
+//   await font.load();
+//   document.fonts.add(font);
+// };
 
-  imageReader.readAsDataURL(file);
-};
+// const setFile = (file) => {
+//   if (!file.type.startsWith("image/")) {
+//     return;
+//   }
 
-canvas.addEventListener("dragover", (e) => e.preventDefault());
+//   imageReader.readAsDataURL(file);
+// };
 
-canvas.addEventListener("drop", (e) => {
-  e.preventDefault();
-  if (!e.dataTransfer || e.dataTransfer.files.length <= 0) {
-    return;
-  }
+// canvas.addEventListener("dragover", (e) => e.preventDefault());
 
-  setFile(e.dataTransfer.files[0]);
-});
+// canvas.addEventListener("drop", (e) => {
+//   e.preventDefault();
+//   if (!e.dataTransfer || e.dataTransfer.files.length <= 0) {
+//     return;
+//   }
 
-const repaintImage = async () => {
-  // clear to black (for transparent images)
-  ctx.fillStyle = "black";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
+//   setFile(e.dataTransfer.files[0]);
+// });
 
-  // scale image to always fill the canvas
-  const scaleX = canvas.width / currentImage.width;
-  const scaleY = canvas.height / currentImage.height;
-  const scale = Math.max(scaleX, scaleY);
-  ctx.setTransform(scale, 0, 0, scale, 0, 0);
-  ctx.drawImage(currentImage, 0, 0);
-  ctx.setTransform(); // reset so that everything else is normal size
+// const repaintImage = async () => {
+//   // clear to black (for transparent images)
+//   ctx.fillStyle = "black";
+//   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // calculate luminance to decide whether the logo will be light or dark
-  const imgd = ctx
-    .getImageData(LOGO_OFFSET_X, LOGO_OFFSET_Y, logoLight.width, logoLight.height)
-    .data;
-  const luminanceAverage = getAverageLuminance(imgd);
+//   // scale image to always fill the canvas
+//   const scaleX = canvas.width / currentImage.width;
+//   const scaleY = canvas.height / currentImage.height;
+//   const scale = Math.max(scaleX, scaleY);
+//   ctx.setTransform(scale, 0, 0, scale, 0, 0);
+//   ctx.drawImage(currentImage, 0, 0);
+//   ctx.setTransform(); // reset so that everything else is normal size
 
-  if (luminanceAverage > LUMINANCE_THRESHOLD) { // make logo black if the top-right corner is bright
-    ctx.drawImage(logoDark, LOGO_OFFSET_X, LOGO_OFFSET_Y);
-  } else {
-    ctx.drawImage(logoLight, LOGO_OFFSET_X, LOGO_OFFSET_Y);
-  }
+//   // calculate luminance to decide whether the logo will be light or dark
+//   const imgd = ctx
+//     .getImageData(LOGO_OFFSET_X, LOGO_OFFSET_Y, logoLight.width, logoLight.height)
+//     .data;
+//   const luminanceAverage = getAverageLuminance(imgd);
 
-  const lines = splitText(currentText, 20).reverse();
-  const fontSize = lines.length < 5 ? 60 : 40;
-  ctx.font = `${fontSize}px 'Bebas Neue'`;
-  lines.forEach((line, index) => {
-    const x = 30;
-    const y = 685;
-    const padding = 15;
-    const lineHeight = padding + fontSize;
-    ctx.fillStyle = "#f9dc4d";
-    ctx
-      .fillRect(x, y - (index * lineHeight), ctx.measureText(line).width + 2 * padding, lineHeight);
-    ctx.textBaseline = "top";
-    ctx.fillStyle = "black";
-    ctx.fillText(line, x + padding, y + padding - (index * lineHeight));
-  });
-};
+//   if (luminanceAverage > LUMINANCE_THRESHOLD) { // make logo black if the top-right corner is bright
+//     ctx.drawImage(logoDark, LOGO_OFFSET_X, LOGO_OFFSET_Y);
+//   } else {
+//     ctx.drawImage(logoLight, LOGO_OFFSET_X, LOGO_OFFSET_Y);
+//   }
 
-imageReader.addEventListener("load", (e) => {
-  currentImage = new Image();
-  currentImage.addEventListener("load", () => repaintImage());
-  currentImage.src = e.target.result;
-});
+//   const lines = splitText(currentText, 20).reverse();
+//   const fontSize = lines.length < 5 ? 60 : 40;
+//   ctx.font = `${fontSize}px 'Bebas Neue'`;
+//   lines.forEach((line, index) => {
+//     const x = 30;
+//     const y = 685;
+//     const padding = 15;
+//     const lineHeight = padding + fontSize;
+//     ctx.fillStyle = "#f9dc4d";
+//     ctx
+//       .fillRect(x, y - (index * lineHeight), ctx.measureText(line).width + 2 * padding, lineHeight);
+//     ctx.textBaseline = "top";
+//     ctx.fillStyle = "black";
+//     ctx.fillText(line, x + padding, y + padding - (index * lineHeight));
+//   });
+// };
 
-const buttonRandom = document.getElementById("randomize");
-buttonRandom.addEventListener("click", async () => {
-  rerollText();
-  await rerollImage();
-  repaintImage();
-});
+// imageReader.addEventListener("load", (e) => {
+//   currentImage = new Image();
+//   currentImage.addEventListener("load", () => repaintImage());
+//   currentImage.src = e.target.result;
+// });
 
-const buttonRandomImg = document.getElementById("randomize-img");
-buttonRandomImg.addEventListener("click", async () => {
-  await rerollImage();
-  repaintImage();
-});
+// const buttonRandom = document.getElementById("randomize");
+// buttonRandom.addEventListener("click", async () => {
+//   rerollText();
+//   await rerollImage();
+//   repaintImage();
+// });
 
-const buttonRandomText = document.getElementById("randomize-text");
-buttonRandomText.addEventListener("click", () => {
-  rerollText();
-  repaintImage();
-});
+// const buttonRandomImg = document.getElementById("randomize-img");
+// buttonRandomImg.addEventListener("click", async () => {
+//   await rerollImage();
+//   repaintImage();
+// });
 
-const inputCustomImg = document.getElementById("customImage");
-inputCustomImg.addEventListener("change", (e) => {
-  e.preventDefault();
-  if (e.target.files.length <= 0) {
-    return;
-  }
-  setFile(e.target.files[0]);
-});
-const buttonCustomImg = document.getElementById("customImageBtn");
-buttonCustomImg.addEventListener("click", () => {
-  inputCustomImg.click();
-});
+// const buttonRandomText = document.getElementById("randomize-text");
+// buttonRandomText.addEventListener("click", () => {
+//   rerollText();
+//   repaintImage();
+// });
 
-const inputCustom = document.getElementById("customText");
-const replaceWithCustomText = async (e) => {
-  if (e.type === "input" || inputCustom.value) {
-    currentText = inputCustom.value;
-    repaintImage();
-  }
-};
-inputCustom.addEventListener("click", replaceWithCustomText);
-inputCustom.addEventListener("input", replaceWithCustomText);
+// const inputCustomImg = document.getElementById("customImage");
+// inputCustomImg.addEventListener("change", (e) => {
+//   e.preventDefault();
+//   if (e.target.files.length <= 0) {
+//     return;
+//   }
+//   setFile(e.target.files[0]);
+// });
+// const buttonCustomImg = document.getElementById("customImageBtn");
+// buttonCustomImg.addEventListener("click", () => {
+//   inputCustomImg.click();
+// });
 
-const downloadLinkReal = document.createElement("a");
-downloadLinkReal.setAttribute("download", "PirStanKampan.jpg");
-const linkSave = document.getElementById("save");
-linkSave.addEventListener("click", (e) => {
-  e.preventDefault();
-  downloadLinkReal.setAttribute("href", canvas.toDataURL("image/jpeg").replace("image/jpeg", "image/octet-stream"));
-  downloadLinkReal.click();
-});
+// const inputCustom = document.getElementById("customText");
+// const replaceWithCustomText = async (e) => {
+//   if (e.type === "input" || inputCustom.value) {
+//     currentText = inputCustom.value;
+//     repaintImage();
+//   }
+// };
+// inputCustom.addEventListener("click", replaceWithCustomText);
+// inputCustom.addEventListener("input", replaceWithCustomText);
 
-initFont();
+// const downloadLinkReal = document.createElement("a");
+// downloadLinkReal.setAttribute("download", "PirStanKampan.jpg");
+// const linkSave = document.getElementById("save");
+// linkSave.addEventListener("click", (e) => {
+//   e.preventDefault();
+//   downloadLinkReal.setAttribute("href", canvas.toDataURL("image/jpeg").replace("image/jpeg", "image/octet-stream"));
+//   downloadLinkReal.click();
+// });
 
-rerollText();
-rerollImage()
-  .then(() => repaintImage());
+// initFont();
+
+// rerollText();
+// rerollImage()
+//   .then(() => repaintImage());
+
+console.log(document.getElementById("myCanvas"));
+if (document.getElementById("myCanvas") != null) {
+  createArticle();
+}
